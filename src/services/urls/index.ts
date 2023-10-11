@@ -15,6 +15,10 @@ function cleanURL(url: string) {
     return url.replace(/['"()`´,\\{}<>|^]/g, '').trim()
 }
 
+// 我感觉这个插件和 TODO 类似，都是需要遍历文件的，所以这里也可以参考 TODO 的实现。
+// https://github.com/Gruntfuggly/todo-tree/blob/master/src/ripgrep.js
+// 观察这里 Todo Tree 得到一个结论，他们使用 ripgrep 包装作为文件搜索的工具。
+// 实际上 ripgrep 也确实能提供 正则匹配以及文件信息的功能，所以我感觉这里的设计比较不合理。
 async function searchForWorkspaceURLs(rootPath = vscode.workspace.rootPath) {
     try {
         if (!rootPath) {
@@ -29,6 +33,7 @@ async function searchForWorkspaceURLs(rootPath = vscode.workspace.rootPath) {
             return undefined
         }
 
+        // TODO: 实际上 vscode.workspace.fs 也提供了文件读取相关的接口。
         const files = readdirSync(rootPath)
         await asyncForEach(files, async (file: string) => {
             const filePath = join(rootPath, file)
@@ -47,6 +52,12 @@ async function searchForWorkspaceURLs(rootPath = vscode.workspace.rootPath) {
                 }
 
                 const content = readFileSync(filePath).toString()
+
+                // 对比了一下，我觉得代码应该是来源于：https://stackoverflow.com/questions/3809401/what-is-a-good-regular-expression-to-match-a-url
+                // 不知道为什么这个模式会多匹配一个末尾的左括号：
+                // 案例：“/// License: MIT (http://www.opensource.org/licenses/mit-license.php)“
+                // 然后我就在答主的测试连接里面找到了更好的模式：
+                // https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,4}\b([-a-zA-Z0-9@:%_\+.~#?&//=]*)
                 const urlsFound = content.match(
                     /https?:\/\/(www\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_+.~#?&//=]*)/g
                 )
